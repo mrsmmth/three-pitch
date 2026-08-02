@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const STORAGE_KEY="three-pitch-detect-v4";
+  const STORAGE_KEY="three-pitch-detect-v42";
   const NOTES=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"].map((name,value)=>({name,value}));
   const QUALITY_LIBRARY=[
     {suffix:"",quality:"Major",ints:[0,4,7],weight:3},{suffix:"m",quality:"Minor",ints:[0,3,7],weight:3},{suffix:"sus4",quality:"sus4",ints:[0,5,7],weight:2.2},{suffix:"dim",quality:"Dim",ints:[0,3,6],weight:1.8},{suffix:"aug",quality:"Aug",ints:[0,4,8],weight:1.5},
@@ -16,9 +16,16 @@
   function find(name){return CHORDS.find(c=>c.name===name)||null;}
   function rootMotion(from,to){if(!from||!to)return 0;const move=(to.root-from.root+12)%12;if(move===5||move===7)return 11;if(move===2||move===10)return 6;if(move===0)return 2;if(move===1||move===11)return 1;return 3;}
   function common(a,b){return(!a||!b)?0:a.tones.filter(t=>b.tones.includes(t)).length*3;}
+  function simplicityBonus(c){
+    // Practical guitar/keyboard charts favor plain triads over exact-but-complex names.
+    if(c.quality==="Major"||c.quality==="Minor")return 42;
+    if(c.quality==="7"||c.quality==="m7"||c.quality==="maj7")return 16;
+    if(c.quality==="sus4"||c.quality==="6"||c.quality==="add9")return 7;
+    return -8;
+  }
   function score(c){
     const matched=state.heard.filter(n=>c.tones.includes(n)).length, missing=state.heard.length-matched, extra=c.tones.filter(n=>!state.heard.includes(n)).length;
-    let total=matched*31-missing*38-extra*7+c.weight;
+    let total=matched*31-missing*38-extra*7+c.weight+simplicityBonus(c);
     if(state.heard.length&&matched===state.heard.length)total+=28;
     if(state.heard.length===c.tones.length&&missing===0&&extra===0)total+=30;
     if(state.heard.includes(c.root))total+=5;

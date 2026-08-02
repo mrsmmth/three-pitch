@@ -1,4 +1,4 @@
-# THREE PITCH v4.0 COMPLETE
+# THREE PITCH v4.2 COMPLETE
 
 コード進行中の「1音」だけにフォーカスし、その瞬間の最短ハモを素早く確認するPWAです。
 
@@ -32,3 +32,10 @@ GitHub Pages等へ、このZIP内の全ファイルを同じ階層で配置し�
 - Harmony playback now prioritizes direction: upper harmony always sounds above the melody, and lower harmony always sounds below it.
 - Chord playback is raised by one octave.
 - Code Detect opens as a separate in-app window rather than a separate browser window/tab.
+
+
+## v4.2 COMPLETE changes
+- Code Detect now prioritizes practical, commonly used chord names over maximum theoretical specificity.
+- Major and minor triads receive the strongest ranking boost.
+- 7th-family chords remain secondary candidates, while sus, dim, aug and other special chords are ranked lower unless the evidence strongly supports them.
+- Previous/next chord context still adjusts the ordering after the simplicity preference is applied.

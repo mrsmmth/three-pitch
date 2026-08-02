@@ -1,13 +1,21 @@
 {
   "name": "THREE PITCH",
-  "short_name": "3PITCH",
-  "description": "コードと主旋律から最短ハモを一音で判定するアプリ",
+  "short_name": "THREE PITCH",
+  "description": "コードと主旋律から上下二つの最短ハモを判定するアプリ",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#080a0f",
   "theme_color": "#0b0e14",
   "icons": [
-    {"src":"./icon-192.png","sizes":"192x192","type":"image/png"},
-    {"src":"./icon-512.png","sizes":"512x512","type":"image/png"}
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
   ]
 }

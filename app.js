@@ -13,7 +13,7 @@
 
   const $ = id => document.getElementById(id);
   const rootGrid=$("rootGrid"), baseGrid=$("baseGrid"), shapeGrid=$("shapeGrid"), decorationGrid=$("decorationGrid"), melodyGrid=$("melodyGrid");
-  const chordName=$("chordName"), chordTones=$("chordTones"), resultNote=$("resultNote"), maybeNotes=$("maybeNotes");
+  const chordName=$("chordName"), chordTones=$("chordTones"), upperResultNote=$("upperResultNote"), lowerResultNote=$("lowerResultNote"), maybeNotes=$("maybeNotes");
 
   let state = loadState();
 
@@ -30,6 +30,7 @@
       };
     }catch{return {...DEFAULT_STATE};}
   }
+
   function saveState(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
   function noteName(value){return NOTES[((value%12)+12)%12].name;}
 
@@ -91,7 +92,7 @@
 
     let third;
     if(sus4) third=5;
-    else if(dim) third=3; // Cdim is entered as Major + Dim, but Dim supplies b3.
+    else if(dim) third=3;
     else third=state.base==="minor"?3:4;
 
     let fifth=7;
@@ -116,16 +117,16 @@
   }
 
   const toPitch=interval=>(state.root+interval)%12;
-  function circularDistance(a,b){const up=(a-b+12)%12,down=(b-a+12)%12;return Math.min(up,down);}
-  const upwardDistance=(a,b)=>(a-b+12)%12;
+  const upwardDistance=(pitch,melody)=>(pitch-melody+12)%12;
+  const downwardDistance=(pitch,melody)=>(melody-pitch+12)%12;
 
-  function chooseMainHarmony(triad){
-    const withoutUnison=triad.filter(p=>p!==state.melody);
-    const candidates=withoutUnison.length?withoutUnison:triad;
-    return [...candidates].sort((a,b)=>{
-      const d=circularDistance(a,state.melody)-circularDistance(b,state.melody);
-      return d!==0?d:upwardDistance(a,state.melody)-upwardDistance(b,state.melody);
-    })[0];
+  function chooseDirectionalHarmony(triad,direction){
+    const distance=direction==="up"?upwardDistance:downwardDistance;
+    const candidates=triad
+      .map(pitch=>({pitch,distance:distance(pitch,state.melody)}))
+      .filter(item=>item.distance>0)
+      .sort((a,b)=>a.distance-b.distance||a.pitch-b.pitch);
+    return candidates[0]?.pitch??triad[0];
   }
 
   function buildChordLabel(){
@@ -146,16 +147,31 @@
   function renderResult(){
     const triad=[...new Set(baseIntervals().map(toPitch))];
     const extras=[...new Set(decorationIntervals().map(toPitch))];
-    const main=chooseMainHarmony(triad);
+    const upper=chooseDirectionalHarmony(triad,"up");
+    const lower=chooseDirectionalHarmony(triad,"down");
     const all=[...new Set([...triad,...extras])];
-    const alternatives=all.filter(p=>p!==main&&p!==state.melody).sort((a,b)=>circularDistance(a,state.melody)-circularDistance(b,state.melody));
+    const alternatives=all
+      .filter(p=>p!==upper&&p!==lower)
+      .sort((a,b)=>upwardDistance(a,state.root)-upwardDistance(b,state.root));
 
     chordName.textContent=buildChordLabel();
     chordTones.textContent=all.map(noteName).join(" · ");
-    resultNote.textContent=noteName(main);
+    upperResultNote.textContent=noteName(upper);
+    lowerResultNote.textContent=noteName(lower);
     maybeNotes.innerHTML="";
-    if(!alternatives.length){const x=document.createElement("span");x.className="maybe-empty";x.textContent="—";maybeNotes.appendChild(x);}
-    else alternatives.forEach(p=>{const x=document.createElement("span");x.className="maybe-note";x.textContent=noteName(p);maybeNotes.appendChild(x);});
+    if(!alternatives.length){
+      const x=document.createElement("span");
+      x.className="maybe-empty";
+      x.textContent="—";
+      maybeNotes.appendChild(x);
+    }else{
+      alternatives.forEach(p=>{
+        const x=document.createElement("span");
+        x.className="maybe-note";
+        x.textContent=noteName(p);
+        maybeNotes.appendChild(x);
+      });
+    }
   }
 
   function update(){saveState();renderSelectors();renderResult();}

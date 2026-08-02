@@ -6,16 +6,19 @@
   <meta name="theme-color" content="#0b0e14">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="3PITCH">
+  <meta name="apple-mobile-web-app-title" content="THREE PITCH">
   <title>THREE PITCH</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="stylesheet" href="./style.css?v=1">
+  <link rel="stylesheet" href="./style.css?v=2">
 </head>
 <body>
   <main class="app">
     <header class="brand">
-      <div class="mini-logo" aria-hidden="true"><i></i><i></i><i></i><b>3P</b></div>
+      <div class="mini-logo" aria-hidden="true">
+        <span>THREE</span>
+        <strong>PITCH</strong>
+      </div>
       <div class="brand-copy">
         <p>SHORTEST HARMONY DETECTOR</p>
         <h1>THREE PITCH</h1>
@@ -45,14 +48,25 @@
     </section>
 
     <section class="result-card" aria-live="polite">
-      <div class="result-kicker">上3度（下5度）</div>
-      <div id="resultNote" class="result-note">E</div>
+      <div class="result-grid">
+        <article class="harmony-result upper-result">
+          <div class="result-kicker">上3度（下5度）</div>
+          <div id="upperResultNote" class="result-note">E</div>
+          <div class="direction-label">上の最短</div>
+        </article>
+        <div class="result-divider" aria-hidden="true"></div>
+        <article class="harmony-result lower-result">
+          <div class="result-kicker">下3度（上5度）</div>
+          <div id="lowerResultNote" class="result-note">G</div>
+          <div class="direction-label">下の最短</div>
+        </article>
+      </div>
       <div class="rule-chip">最短和音</div>
       <div class="maybe"><span>もしかして？</span><div id="maybeNotes" class="maybe-notes"></div></div>
     </section>
   </main>
 
-  <script src="./app.js?v=1"></script>
+  <script src="./app.js?v=2"></script>
   <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"));}</script>
 </body>
 </html>

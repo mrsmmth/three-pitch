@@ -1,25 +1,34 @@
-# THREE PITCH
+# THREE PITCH v4.0 COMPLETE
 
-コードと主旋律の1音を選ぶだけで、上下それぞれの最短ハモを一音ずつ返すPWAです。
+コード進行中の「1音」だけにフォーカスし、その瞬間の最短ハモを素早く確認するPWAです。
 
-## 判定
-- 上結果：基本三和音の中から、主旋律より上方向で最短の音
-- 下結果：基本三和音の中から、主旋律より下方向で最短の音
-- 表示名：上3度（下5度）／下3度（上5度）
-- 実際の判定は度数ではなく、上下それぞれの最短和音
-- 装飾音は本命判定には使用しない
-- 「もしかして？」には、上下の結果音以外の全コード構成音を表示
-- 主旋律がコードトーンなら、その音も「もしかして？」へ表示
-- 6th、7th、9thなどの装飾音も表示
+## Harmony Mode
+- コード／主旋律選択
+- コード構成音（♯含む）のリアルタイム発光
+- コード外音警告と、コード内音へ戻した際の自動解除
+- 上3度（下5度）／下3度（上5度）
+- 装飾音を含む「もしかして？」表示
 
-## コード入力
-- ROOT：12音
-- BASE：Major / Minor
-- SHAPE：sus4 / Dim / Aug
-- DECORATION：6 / 7 / maj7 / dim7 / add9 / 9 / 11 / 13
-- m表記がないコードはMajorを選択
-- Cdimは Major + Dim
-- Caugは Major + Aug
-- Csus4は Major + sus4
+## Code Detect Mode
+- 別ウィンドウで起動
+- 聞こえた音を1音以上選択
+- 前コード／次コードを任意入力
+- 音一致度、余分な音、共通音、ルート進行を加味し、可能性が高い順に候補表示
 
-GitHub Pagesへ全ファイルをアップロードすると、そのまま利用できます。
+## Sound
+- Web Audio APIによる軽量ピアノ風音色
+- 主旋律／上ハモ／下ハモ／コード同時再生
+- ハモ確認（主旋律 → 上 → 下 → 3音同時）
+
+## Guide / PWA
+- 初回ガイド
+- 「次回から表示しない」設定
+- 右上「？」から再表示
+- オフラインキャッシュ対応
+
+GitHub Pages等へ、このZIP内の全ファイルを同じ階層で配置してください。
+
+## v4.1 COMPLETE changes
+- Harmony playback now prioritizes direction: upper harmony always sounds above the melody, and lower harmony always sounds below it.
+- Chord playback is raised by one octave.
+- Code Detect opens as a separate in-app window rather than a separate browser window/tab.

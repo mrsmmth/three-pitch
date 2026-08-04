@@ -1,41 +1,73 @@
-# THREE PITCH v4.2 COMPLETE
+# VECTOR PITCH v0.2.3
 
-コード進行中の「1音」だけにフォーカスし、その瞬間の最短ハモを素早く確認するPWAです。
+MIDIを正解音程として、条件を満たす持続区間だけボーカルのピッチ中心を補正するオフライン試作です。
 
-## Harmony Mode
-- コード／主旋律選択
-- コード構成音（♯含む）のリアルタイム発光
-- コード外音警告と、コード内音へ戻した際の自動解除
-- 上3度（下5度）／下3度（上5度）
-- 装飾音を含む「もしかして？」表示
+## 起動（Mac）
 
-## Code Detect Mode
-- 別ウィンドウで起動
-- 聞こえた音を1音以上選択
-- 前コード／次コードを任意入力
-- 音一致度、余分な音、共通音、ルート進行を加味し、可能性が高い順に候補表示
+1. `start.command`をダブルクリック
+2. ブラウザで `http://localhost:8765` が開く
+3. Vocal WAVとGuide MIDIを読み込む
 
-## Sound
-- Web Audio APIによる軽量ピアノ風音色
-- 主旋律／上ハモ／下ハモ／コード同時再生
-- ハモ確認（主旋律 → 上 → 下 → 3音同時）
+初回にmacOSから確認が出た場合は、右クリック→開くを選んでください。ブラウザ内ですべて処理し、音声は外部へ送信しません。
 
-## Guide / PWA
-- 初回ガイド
-- 「次回から表示しない」設定
-- 右上「？」から再表示
-- オフラインキャッシュ対応
+## 基本フロー
 
-GitHub Pages等へ、このZIP内の全ファイルを同じ階層で配置してください。
+1. WAVとMIDIを読み込む
+2. 波形を直接ドラッグしてボーカル全体の開始位置を合わせる
+3. 「ピッチを解析」
+4. 距離・持続時間・補正量・Attack・Release・Smoothを調整
+5. 再生ヘッドを境界へ置き、ハサミで区間を分割
+6. 再生ヘッドが入っている区間のつまみを変更
+7. 「補正プレビューを生成」
+8. ORIGINAL／PROCESSEDを比較してWAVを書き出す
 
-## v4.1 COMPLETE changes
-- Harmony playback now prioritizes direction: upper harmony always sounds above the melody, and lower harmony always sounds below it.
-- Chord playback is raised by one octave.
-- Code Detect opens as a separate in-app window rather than a separate browser window/tab.
+## 処理思想
 
+- 音声全編を一つのRubber Band処理へ通す
+- 補正対象外はピッチ移動量0cent
+- Attack／Releaseは原音との音量クロスフェードではなく、補正cent量の時間変化
+- 全編が最初から一つの編集区間
+- ハサミで分割した左右は、分割前のつまみ値をそのまま継承
+- つまみは再生ヘッドが入っている区間へ反映
+- 出力は24bit WAV
 
-## v4.2 COMPLETE changes
-- Code Detect now prioritizes practical, commonly used chord names over maximum theoretical specificity.
-- Major and minor triads receive the strongest ranking boost.
-- 7th-family chords remain secondary candidates, while sus, dim, aug and other special chords are ranked lower unless the evidence strongly supports them.
-- Previous/next chord context still adjusts the ordering after the simplicity preference is applied.
+## 再生・移動
+
+- 再生ボタンまたはSpaceキー：再生／停止
+- 波形・ピッチエリア・目盛りをクリック：再生ヘッド移動
+- 再生ヘッドをドラッグ：再生位置移動
+- 波形を左右へドラッグ：ボーカル・検出ピッチ・補正区間をまとめて移動
+- `−10 / −1 / ＋1 / ＋10`：ボーカル位置をms単位で微調整
+
+## v0.1の制限
+
+- MIDIは主旋律が1音ずつ鳴るデータを推奨
+- オーディオのパート別カット移動は未実装（ボーカル全体の移動まで）
+- 長尺音源は解析・生成に時間がかかる
+- ピッチ検出は試作アルゴリズム。実声での調整が必要
+- Rubber BandはGPLv2。クローズドソース配布時は別途ライセンス確認が必要
+
+## v0.2.1
+
+- プレビュー生成が0%で停止する場合に備え、音声エンジンの初期化方法を変更
+- エンジン読込・初期化段階から進捗を表示
+- ブラウザ内処理の負荷を軽減
+- 初期化失敗・処理失敗・タイムアウトを画面へ表示
+
+## v0.2.2
+
+- 元WAVと実際の内部処理設定（sample rate / block size / ms）を画面に表示
+- 内部処理レートをAUTO・44.1kHz・48kHzから選択可能
+- 処理ブロックを1024・2048・4096 samplesから選択可能
+- 処理後は元WAVのサンプルレートへ自動的に戻して再生・書き出し
+- 波形とMIDI／検出ピッチを、それぞれ縦方向の二本指ピンチで拡大縮小可能
+- iPadで扱いやすいよう、必要ファイルをすべて同一階層へ配置
+- デモ音源・デモMIDIを同梱対象から除外
+
+## v0.2.3
+
+- iPad向けフラット構成版（ZIP内の全ファイルを同一階層に配置）
+
+## Third-party
+
+Rubber Band Library / rubberband-wasmを利用しています。詳細は`THIRD_PARTY.md`と`LICENSE-RUBBERBAND`を参照してください。

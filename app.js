@@ -1,163 +1,130 @@
 (() => {
   "use strict";
 
-  const STORAGE_KEY = "three-pitch-state-v1";
-  const NOTES = [
-    ["C",0],["C♯",1],["D",2],["D♯",3],["E",4],["F",5],
-    ["F♯",6],["G",7],["G♯",8],["A",9],["A♯",10],["B",11]
-  ].map(([name,value]) => ({name,value}));
-  const BASES = [["major","Major"],["minor","Minor"]].map(([id,label])=>({id,label}));
-  const SHAPES = [["sus4","sus4"],["dim","Dim"],["aug","Aug"]].map(([id,label])=>({id,label}));
-  const DECORATIONS = ["6","7","maj7","dim7","add9","9","11","13"].map(id=>({id,label:id}));
-  const DEFAULT_STATE = {root:0,base:"major",shapes:[],decorations:[],melody:0};
-
+  const STORAGE_KEY = "three-pitch-state-v4";
+  const GUIDE_KEY = "three-pitch-guide-hidden-v4";
+  const NOTES = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"].map((name,value)=>({name,value}));
+  const DEFAULT = {root:0,base:"major",shapes:[],decorations:[],melody:0};
   const $ = id => document.getElementById(id);
-  const rootGrid=$("rootGrid"), baseGrid=$("baseGrid"), shapeGrid=$("shapeGrid"), decorationGrid=$("decorationGrid"), melodyGrid=$("melodyGrid");
-  const chordName=$("chordName"), chordTones=$("chordTones"), resultNote=$("resultNote"), maybeNotes=$("maybeNotes");
+  const els = {
+    rootGrid:$("rootGrid"), baseGrid:$("baseGrid"), shapeGrid:$("shapeGrid"), decorationGrid:$("decorationGrid"), melodyGrid:$("melodyGrid"),
+    chordName:$("chordName"), chordTones:$("chordTones"), upper:$("upperResultNote"), lower:$("lowerResultNote"), maybe:$("maybeNotes"), warning:$("melodyWarning"),
+    playChord:$("playChordButton"), playMelody:$("playMelodyButton"), playUpper:$("playUpperButton"), playLower:$("playLowerButton"), harmonyCheck:$("harmonyCheckButton"),
+    guide:$("guideDialog"), guideButton:$("guideButton"), guideOk:$("guideOkButton"), dontShow:$("dontShowGuide"), openDetect:$("openDetectButton"), detectDialog:$("detectDialog")
+  };
 
-  let state = loadState();
+  let state = load();
+  let audioContext = null;
+  let computed = {upper:4,lower:7,upperDistance:4,lowerDistance:5,triad:[0,4,7],all:[0,4,7]};
 
-  function loadState(){
-    try{
-      const raw=JSON.parse(localStorage.getItem(STORAGE_KEY));
-      if(!raw || typeof raw!=="object") return {...DEFAULT_STATE};
-      return {
-        root:Number.isInteger(raw.root)?((raw.root%12)+12)%12:0,
-        base:raw.base==="minor"?"minor":"major",
-        shapes:Array.isArray(raw.shapes)?raw.shapes.filter(id=>SHAPES.some(x=>x.id===id)):[],
-        decorations:Array.isArray(raw.decorations)?raw.decorations.filter(id=>DECORATIONS.some(x=>x.id===id)):[],
-        melody:Number.isInteger(raw.melody)?((raw.melody%12)+12)%12:0
-      };
-    }catch{return {...DEFAULT_STATE};}
+  function load(){
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      return {...DEFAULT,...raw,shapes:Array.isArray(raw?.shapes)?raw.shapes:[],decorations:Array.isArray(raw?.decorations)?raw.decorations:[]};
+    } catch { return {...DEFAULT}; }
   }
-  function saveState(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
-  function noteName(value){return NOTES[((value%12)+12)%12].name;}
-
-  function makeButton(label,className,selected,onClick,aria){
-    const el=document.createElement("button");
-    el.type="button";
-    el.className=className+(selected?" selected":"");
-    el.textContent=label;
-    el.setAttribute("aria-pressed",selected?"true":"false");
-    if(aria) el.setAttribute("aria-label",aria);
-    el.addEventListener("click",onClick);
-    return el;
+  function save(){ localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); }
+  function nn(v){ return NOTES[((v%12)+12)%12].name; }
+  function makeButton(label,className,selected,onClick,ariaLabel){
+    const b=document.createElement("button"); b.type="button"; b.className=className+(selected?" selected":""); b.textContent=label;
+    b.setAttribute("aria-pressed",selected?"true":"false"); if(ariaLabel)b.setAttribute("aria-label",ariaLabel); b.addEventListener("click",onClick); return b;
   }
-
-  function renderSelectors(){
-    rootGrid.innerHTML="";
-    NOTES.forEach(note=>rootGrid.appendChild(makeButton(note.name,"note-button",state.root===note.value,()=>{state.root=note.value;update();},`コードのルート ${note.name}`)));
-
-    baseGrid.innerHTML="";
-    BASES.forEach(base=>baseGrid.appendChild(makeButton(base.label,"choice-button",state.base===base.id,()=>{state.base=base.id;update();})));
-
-    shapeGrid.innerHTML="";
-    SHAPES.forEach(shape=>shapeGrid.appendChild(makeButton(shape.label,"choice-button",state.shapes.includes(shape.id),()=>toggleShape(shape.id))));
-
-    decorationGrid.innerHTML="";
-    DECORATIONS.forEach(dec=>decorationGrid.appendChild(makeButton(dec.label,"decoration-button",state.decorations.includes(dec.id),()=>toggleDecoration(dec.id))));
-
-    melodyGrid.innerHTML="";
-    NOTES.forEach(note=>melodyGrid.appendChild(makeButton(note.name,"note-button",state.melody===note.value,()=>{state.melody=note.value;update();},`主旋律 ${note.name}`)));
-  }
-
-  function toggleShape(id){
-    const selected=new Set(state.shapes);
-    if(selected.has(id)) selected.delete(id);
-    else{
-      if(id==="dim") selected.delete("aug");
-      if(id==="aug") selected.delete("dim");
-      selected.add(id);
-    }
-    state.shapes=[...selected];
-    update();
-  }
-
-  function toggleDecoration(id){
-    const selected=new Set(state.decorations);
-    if(selected.has(id)) selected.delete(id);
-    else{
-      if(["7","maj7","dim7"].includes(id)) ["7","maj7","dim7"].forEach(x=>selected.delete(x));
-      selected.add(id);
-    }
-    state.decorations=[...selected];
-    update();
-  }
-
   function baseIntervals(){
-    const sus4=state.shapes.includes("sus4");
-    const dim=state.shapes.includes("dim");
-    const aug=state.shapes.includes("aug");
-
-    let third;
-    if(sus4) third=5;
-    else if(dim) third=3; // Cdim is entered as Major + Dim, but Dim supplies b3.
-    else third=state.base==="minor"?3:4;
-
-    let fifth=7;
-    if(dim) fifth=6;
-    if(aug) fifth=8;
-    return [...new Set([0,third,fifth])];
+    const sus=state.shapes.includes("sus4"), dim=state.shapes.includes("dim"), aug=state.shapes.includes("aug");
+    const third=sus?5:dim?3:state.base==="minor"?3:4; const fifth=dim?6:aug?8:7; return [...new Set([0,third,fifth])];
   }
-
   function decorationIntervals(){
     const out=[];
     for(const id of state.decorations){
-      if(id==="6") out.push(9);
-      if(id==="7") out.push(10);
-      if(id==="maj7") out.push(11);
-      if(id==="dim7") out.push(9);
-      if(id==="add9") out.push(2);
-      if(id==="9") out.push(10,2);
-      if(id==="11") out.push(10,2,5);
-      if(id==="13") out.push(10,2,5,9);
+      if(id==="6"||id==="dim7")out.push(9); if(id==="7")out.push(10); if(id==="maj7")out.push(11); if(id==="add9")out.push(2);
+      if(id==="9")out.push(10,2); if(id==="11")out.push(10,2,5); if(id==="13")out.push(10,2,5,9);
     }
     return [...new Set(out)];
   }
-
-  const toPitch=interval=>(state.root+interval)%12;
-  function circularDistance(a,b){const up=(a-b+12)%12,down=(b-a+12)%12;return Math.min(up,down);}
-  const upwardDistance=(a,b)=>(a-b+12)%12;
-
-  function chooseMainHarmony(triad){
-    const withoutUnison=triad.filter(p=>p!==state.melody);
-    const candidates=withoutUnison.length?withoutUnison:triad;
-    return [...candidates].sort((a,b)=>{
-      const d=circularDistance(a,state.melody)-circularDistance(b,state.melody);
-      return d!==0?d:upwardDistance(a,state.melody)-upwardDistance(b,state.melody);
-    })[0];
+  function pitches(intervals){ return intervals.map(i=>(state.root+i)%12); }
+  function distanceUp(p,m){return(p-m+12)%12;} function distanceDown(p,m){return(m-p+12)%12;}
+  function directional(triad,direction){
+    const fn=direction==="up"?distanceUp:distanceDown;
+    const match=triad.map(p=>({p,d:fn(p,state.melody)})).filter(x=>x.d>0).sort((a,b)=>a.d-b.d||a.p-b.p)[0];
+    return match ?? {p:triad[0],d:direction==="up"?12:12};
   }
-
-  function buildChordLabel(){
-    let label=noteName(state.root);
-    const sus4=state.shapes.includes("sus4"),dim=state.shapes.includes("dim"),aug=state.shapes.includes("aug");
-    if(dim&&!sus4) label+=state.base==="minor"?"m♭5":"dim";
-    else if(aug&&!sus4) label+=state.base==="minor"?"m♯5":"aug";
-    else{
-      if(state.base==="minor") label+="m";
-      if(sus4) label+="sus4";
-      if(dim) label+="♭5";
-      if(aug) label+="♯5";
-    }
-    ["6","7","maj7","dim7","add9","9","11","13"].forEach(id=>{if(state.decorations.includes(id)) label+=id;});
+  function chordLabel(){
+    let label=nn(state.root); const sus=state.shapes.includes("sus4"),dim=state.shapes.includes("dim"),aug=state.shapes.includes("aug");
+    if(dim&&!sus) label+=state.base==="minor"?"m♭5":"dim";
+    else if(aug&&!sus) label+=state.base==="minor"?"m♯5":"aug";
+    else { if(state.base==="minor")label+="m"; if(sus)label+="sus4"; if(dim)label+="♭5"; if(aug)label+="♯5"; }
+    ["6","7","maj7","dim7","add9","9","11","13"].forEach(id=>{if(state.decorations.includes(id))label+=id;});
     return label;
   }
-
+  function toggleShape(id){
+    const set=new Set(state.shapes); if(set.has(id))set.delete(id); else { if(id==="dim")set.delete("aug"); if(id==="aug")set.delete("dim"); set.add(id); }
+    state.shapes=[...set]; update();
+  }
+  function toggleDecoration(id){
+    const set=new Set(state.decorations); if(set.has(id))set.delete(id); else { if(["7","maj7","dim7"].includes(id))["7","maj7","dim7"].forEach(x=>set.delete(x)); set.add(id); }
+    state.decorations=[...set]; update();
+  }
+  function renderSelectors(){
+    const triad=new Set(computed.triad), extras=new Set(computed.all.filter(x=>!triad.has(x)));
+    els.rootGrid.replaceChildren(...NOTES.map(n=>makeButton(n.name,"note-button",state.root===n.value,()=>{state.root=n.value;update();})));
+    els.baseGrid.replaceChildren(...[["major","Major"],["minor","Minor"]].map(([id,label])=>makeButton(label,"choice-button",state.base===id,()=>{state.base=id;update();})));
+    els.shapeGrid.replaceChildren(...[["sus4","sus4"],["dim","Dim"],["aug","Aug"]].map(([id,label])=>makeButton(label,"choice-button",state.shapes.includes(id),()=>toggleShape(id))));
+    els.decorationGrid.replaceChildren(...["6","7","maj7","dim7","add9","9","11","13"].map(id=>makeButton(id,"decoration-button",state.decorations.includes(id),()=>toggleDecoration(id))));
+    els.melodyGrid.replaceChildren(...NOTES.map(n=>{
+      let cls="note-button"; if(triad.has(n.value))cls+=" chord-tone"; else if(extras.has(n.value))cls+=" decor-tone";
+      if(state.melody===n.value&&!computed.all.includes(n.value))cls+=" invalid-selected";
+      return makeButton(n.name,cls,state.melody===n.value,()=>{state.melody=n.value;update();});
+    }));
+  }
   function renderResult(){
-    const triad=[...new Set(baseIntervals().map(toPitch))];
-    const extras=[...new Set(decorationIntervals().map(toPitch))];
-    const main=chooseMainHarmony(triad);
-    const all=[...new Set([...triad,...extras])];
-    const alternatives=all.filter(p=>p!==main&&p!==state.melody).sort((a,b)=>circularDistance(a,state.melody)-circularDistance(b,state.melody));
-
-    chordName.textContent=buildChordLabel();
-    chordTones.textContent=all.map(noteName).join(" · ");
-    resultNote.textContent=noteName(main);
-    maybeNotes.innerHTML="";
-    if(!alternatives.length){const x=document.createElement("span");x.className="maybe-empty";x.textContent="—";maybeNotes.appendChild(x);}
-    else alternatives.forEach(p=>{const x=document.createElement("span");x.className="maybe-note";x.textContent=noteName(p);maybeNotes.appendChild(x);});
+    els.chordName.textContent=chordLabel(); els.chordTones.textContent=computed.all.map(nn).join(" · "); els.upper.textContent=nn(computed.upper); els.lower.textContent=nn(computed.lower);
+    els.warning.hidden=computed.all.includes(state.melody);
+    const alternatives=computed.all.filter(p=>p!==computed.upper&&p!==computed.lower).sort((a,b)=>distanceUp(a,state.root)-distanceUp(b,state.root));
+    els.maybe.innerHTML="";
+    if(!alternatives.length){ const s=document.createElement("span"); s.className="maybe-empty"; s.textContent="—"; els.maybe.appendChild(s); }
+    else alternatives.forEach(p=>{const s=document.createElement("span");s.className="maybe-note";s.textContent=nn(p);els.maybe.appendChild(s);});
+  }
+  function update(){
+    const triad=[...new Set(pitches(baseIntervals()))], extras=pitches(decorationIntervals());
+    const upper=directional(triad,"up"), lower=directional(triad,"down");
+    computed={triad,all:[...new Set([...triad,...extras])],upper:upper.p,lower:lower.p,upperDistance:upper.d,lowerDistance:lower.d};
+    save(); renderSelectors(); renderResult();
   }
 
-  function update(){saveState();renderSelectors();renderResult();}
+  function getAudioContext(){
+    if(!audioContext) audioContext=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioContext.state==="suspended") audioContext.resume(); return audioContext;
+  }
+  function frequency(pitch,octave=4){ return 440*Math.pow(2,(((octave+1)*12+pitch)-69)/12); }
+  function frequencyFromMidi(midi){ return 440*Math.pow(2,(midi-69)/12); }
+  function playPianoTone(pitch,start=0,duration=.72,octave=4,volume=.2,midi=null){
+    const ctx=getAudioContext(), now=ctx.currentTime+start, master=ctx.createGain(), filter=ctx.createBiquadFilter();
+    filter.type="lowpass"; filter.frequency.setValueAtTime(2600,now); filter.Q.value=.7;
+    master.gain.setValueAtTime(.0001,now); master.gain.exponentialRampToValueAtTime(volume,now+.012); master.gain.exponentialRampToValueAtTime(volume*.32,now+.18); master.gain.exponentialRampToValueAtTime(.0001,now+duration);
+    master.connect(filter); filter.connect(ctx.destination);
+    [[1,1],[2,.32],[3,.13]].forEach(([mult,gain])=>{const osc=ctx.createOscillator(),g=ctx.createGain();osc.type=mult===1?"triangle":"sine";osc.frequency.value=(midi===null?frequency(pitch,octave):frequencyFromMidi(midi))*mult;g.gain.value=gain;osc.connect(g);g.connect(master);osc.start(now);osc.stop(now+duration+.03);});
+  }
+  function playNotes(notes,start=0,duration=.8,octave=4){ notes.forEach((p,i)=>playPianoTone(p,start,duration,octave,Math.max(.07,.2-(i*.012)))); }
+  function flash(button){button.classList.remove("playing");void button.offsetWidth;button.classList.add("playing");setTimeout(()=>button.classList.remove("playing"),700);}
+
+  els.playMelody.addEventListener("click",()=>{flash(els.playMelody);playPianoTone(state.melody);});
+  els.playUpper.addEventListener("click",()=>{flash(els.playUpper);const melodyMidi=60+state.melody;playPianoTone(computed.upper,0,.72,4,.2,melodyMidi+computed.upperDistance);});
+  els.playLower.addEventListener("click",()=>{flash(els.playLower);const melodyMidi=60+state.melody;playPianoTone(computed.lower,0,.72,4,.2,melodyMidi-computed.lowerDistance);});
+  els.playChord.addEventListener("click",()=>{flash(els.playChord);playNotes(computed.all,0,1,4);});
+  els.harmonyCheck.addEventListener("click",()=>{
+    flash(els.harmonyCheck);
+    const melodyMidi=60+state.melody, upperMidi=melodyMidi+computed.upperDistance, lowerMidi=melodyMidi-computed.lowerDistance;
+    playPianoTone(state.melody,0,.55,4,.2,melodyMidi);
+    playPianoTone(computed.upper,.68,.55,4,.2,upperMidi);
+    playPianoTone(computed.lower,1.36,.55,4,.2,lowerMidi);
+    playPianoTone(state.melody,2.08,1.05,4,.16,melodyMidi);
+    playPianoTone(computed.upper,2.08,1.05,4,.16,upperMidi);
+    playPianoTone(computed.lower,2.08,1.05,4,.16,lowerMidi);
+  });
+  els.openDetect.addEventListener("click",()=>els.detectDialog.showModal());
+  els.guideButton.addEventListener("click",()=>{els.dontShow.checked=localStorage.getItem(GUIDE_KEY)==="1";els.guide.showModal();});
+  els.guideOk.addEventListener("click",()=>localStorage.setItem(GUIDE_KEY,els.dontShow.checked?"1":"0"));
+
   update();
+  if(localStorage.getItem(GUIDE_KEY)!=="1") requestAnimationFrame(()=>els.guide.showModal());
 })();

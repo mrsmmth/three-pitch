@@ -1,129 +1,58 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VECTOR PITCH — MIDI Guided Vocal Editor</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0e14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="3PITCH">
+  <title>THREE PITCH</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="stylesheet" href="./style.css?v=1">
 </head>
 <body>
-  <header class="app-header">
-    <div>
-      <p class="eyebrow">MIDI GUIDED VOCAL EDITOR</p>
-      <h1>VECTOR PITCH <span>v0.2.3</span></h1>
-    </div>
-    <div class="status" id="status"><i></i><span>素材を読み込んでください</span></div>
-  </header>
-
-  <main>
-    <section class="import-strip panel">
-      <label class="file-card">
-        <span class="file-icon">W</span>
-        <span><b>VOCAL WAV</b><small id="wavName">WAVを選択</small></span>
-        <input id="wavFile" type="file" accept="audio/wav,audio/*" />
-      </label>
-      <label class="file-card">
-        <span class="file-icon midi">M</span>
-        <span><b>GUIDE MIDI</b><small id="midiName">MIDIを選択</small></span>
-        <input id="midiFile" type="file" accept="audio/midi,.mid,.midi" />
-      </label>
-      <div class="sync-box">
-        <div class="control-title"><span>VOCAL POSITION</span><output id="offsetOut">0 ms</output></div>
-        <input id="offset" type="range" min="-300000" max="300000" step="1" value="0" />
-        <div class="nudge-row">
-          <button data-nudge="-10">−10</button><button data-nudge="-1">−1</button>
-          <button id="offsetReset">RESET</button>
-          <button data-nudge="1">＋1</button><button data-nudge="10">＋10</button>
-        </div>
+  <main class="app">
+    <header class="brand">
+      <div class="mini-logo" aria-hidden="true"><i></i><i></i><i></i><b>3P</b></div>
+      <div class="brand-copy">
+        <p>SHORTEST HARMONY DETECTOR</p>
+        <h1>THREE PITCH</h1>
+        <span>最短ハモ判定</span>
       </div>
+    </header>
+
+    <section class="control-card chord-card">
+      <div class="section-title"><span>01</span><div><h2>CHORD</h2><p>コードを選択</p></div></div>
+      <div class="label">ROOT</div>
+      <div id="rootGrid" class="notes-grid"></div>
+
+      <div class="split-row">
+        <div><div class="label">BASE</div><div id="baseGrid" class="choice-grid base-grid"></div></div>
+        <div><div class="label">SHAPE</div><div id="shapeGrid" class="choice-grid shape-grid"></div></div>
+      </div>
+
+      <div class="label decoration-label">DECORATION</div>
+      <div id="decorationGrid" class="decoration-grid"></div>
+
+      <div class="summary"><strong id="chordName">C</strong><span id="chordTones">C · E · G</span></div>
     </section>
 
-    <section class="editor panel">
-      <div class="timeline-toolbar">
-        <div class="transport">
-          <button class="play" id="playBtn" title="再生／停止（Space）">▶</button>
-          <span id="timeDisplay">00:00.000</span>
-        </div>
-        <div class="audition-tabs" role="group">
-          <button class="active" data-mode="original">原音</button>
-          <button data-mode="processed">補正後</button>
-          <button data-mode="guide">＋ ガイド</button>
-        </div>
-        <div class="zoom-control">
-          <span>ZOOM</span><input id="zoom" type="range" min="1" max="8" value="1" step="0.25" />
-        </div>
-      </div>
-
-      <div class="timeline-scroll" id="timelineScroll">
-        <div class="timeline-stage" id="timelineStage">
-          <div class="ruler" id="ruler"></div>
-          <div class="lane-label">VOCAL</div>
-          <canvas id="waveCanvas" height="118"></canvas>
-          <div class="lane-label midi-label">MIDI / PITCH</div>
-          <canvas id="pitchCanvas" height="210"></canvas>
-          <div class="lane-label region-label">補正設定区間</div>
-          <div class="region-lane" id="regionLane"></div>
-          <div class="playhead" id="playhead"></div>
-        </div>
-      </div>
-
-      <div class="selection-toolbar">
-        <span>再生ヘッド</span>
-        <input id="headTime" type="number" min="0" step="0.001" value="0" />
-        <span>sec</span>
-        <button class="accent" id="splitBtn">✂ この位置で分割</button>
-        <button id="mergePrevBtn">← 前の区間と結合</button>
-        <span class="shortcut-hint">Space：再生／停止</span>
-      </div>
+    <section class="control-card melody-card">
+      <div class="section-title"><span>02</span><div><h2>MELODY</h2><p>主旋律の1音を選択</p></div></div>
+      <div id="melodyGrid" class="notes-grid"></div>
     </section>
 
-    <section class="lower-grid">
-      <section class="panel settings-panel">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">CORRECTION PARAMETERS</p>
-            <h2 id="settingsTitle">区間1</h2>
-          </div>
-          <span class="current-segment" id="segmentRange">全編</span>
-        </div>
-        <div class="knob-grid" id="knobGrid"></div>
-      </section>
-
-      <section class="panel analysis-panel">
-        <div class="section-head">
-          <div><p class="eyebrow">ANALYSIS</p><h2>補正対象</h2></div>
-          <span class="engine-badge">RUBBER BAND · FULL FLOW</span>
-        </div>
-        <div class="metrics">
-          <div><b id="targetCount">—</b><span>対象区間</span></div>
-          <div><b id="targetTime">—</b><span>対象時間</span></div>
-          <div><b id="maxCorrection">—</b><span>最大補正</span></div>
-        </div>
-        <div class="legend">
-          <span><i class="green"></i>補正対象</span>
-          <span><i class="yellow"></i>時間不足</span>
-          <span><i class="red"></i>距離超過</span>
-          <span><i class="gray"></i>未検出</span>
-        </div>
-        <div class="engine-settings">
-          <div class="engine-readout"><span>音声処理設定</span><b id="engineReadout">WAV読込後に表示</b></div>
-          <label>処理レート<select id="processRate"><option value="auto">元WAVと同じ</option><option value="44100">44.1 kHz</option><option value="48000" selected>48 kHz（推奨）</option></select></label>
-          <label>処理ブロック<select id="blockSize"><option value="1024">1024 samples</option><option value="2048" selected>2048 samples（推奨）</option><option value="4096">4096 samples</option></select></label>
-          <small>補正後は元WAVのサンプルレートへ戻して再生・書き出します。</small>
-        </div>
-        <div class="action-stack">
-          <button id="analyzeBtn" class="secondary" disabled>1. ピッチを解析</button>
-          <button id="renderBtn" class="primary" disabled>2. 補正プレビューを生成</button>
-          <button id="exportBtn" class="secondary" disabled>WAVを書き出す</button>
-        </div>
-        <div class="progress-wrap hidden" id="progressWrap">
-          <div class="progress"><i id="progressBar"></i></div>
-          <span id="progressText">処理中…</span>
-        </div>
-      </section>
+    <section class="result-card" aria-live="polite">
+      <div class="result-kicker">上3度（下5度）</div>
+      <div id="resultNote" class="result-note">E</div>
+      <div class="rule-chip">最短和音</div>
+      <div class="maybe"><span>もしかして？</span><div id="maybeNotes" class="maybe-notes"></div></div>
     </section>
   </main>
 
-  <script src="app-v2.js" type="module"></script>
+  <script src="./app.js?v=1"></script>
+  <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"));}</script>
 </body>
 </html>
